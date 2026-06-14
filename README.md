@@ -1,16 +1,13 @@
-Код дипломной работы
-from PyQt5.QtWidgets import QInputDialog
+код дипломной работы:
 import sys
 import sqlite3
-import os
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QPushButton, QLabel, QLineEdit, QStackedWidget, QTableWidget,
                              QTableWidgetItem, QTreeWidget, QTreeWidgetItem, QMessageBox,
                              QDialog, QFormLayout, QTextEdit, QFileDialog, QComboBox,
-                             QHeaderView, QSplitter, QListWidget, QListWidgetItem,
-                             QAbstractItemView, QGroupBox, QScrollArea, QFrame)
+                             QSplitter, QListWidget, QListWidgetItem, QInputDialog, QTabWidget)
 from PyQt5.QtCore import Qt, QUrl
-from PyQt5.QtGui import QFont, QPalette, QColor, QIcon, QDesktopServices, QPixmap
+from PyQt5.QtGui import QDesktopServices, QPixmap
 
 DB_NAME = "weapons_wiki.db"
 
@@ -33,7 +30,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT UNIQUE NOT NULL,
             parent_id INTEGER,
-            FOREIGN KEY(parent_id) REFERENCES weapon_classes(id)
+            FOREIGN KEY(parent_id) REFERENCES weapon_classes(id) ON DELETE CASCADE
         )
     ''')
 
@@ -46,8 +43,20 @@ def init_db():
             reference_link TEXT,
             class_id INTEGER,
             author_id INTEGER,
-            FOREIGN KEY(class_id) REFERENCES weapon_classes(id),
+            FOREIGN KEY(class_id) REFERENCES weapon_classes(id) ON DELETE SET NULL,
             FOREIGN KEY(author_id) REFERENCES users(id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS favorites (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            article_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(article_id) REFERENCES articles(id) ON DELETE CASCADE,
+            UNIQUE(user_id, article_id)
         )
     ''')
 
@@ -59,59 +68,40 @@ def init_db():
     if cursor.fetchone()[0] == 0:
         cold_id = cursor.execute(
             "INSERT INTO weapon_classes (name, parent_id) VALUES ('Холодное оружие', NULL)").lastrowid
-        short_blade = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Короткоклинковое', ?)",
-                                     (cold_id,)).lastrowid
-        long_blade = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Длинноклинковое', ?)",
-                                    (cold_id,)).lastrowid
-        polearm = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Древковое', ?)",
-                                 (cold_id,)).lastrowid
-        chopping = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Рубящее', ?)",
-                                  (cold_id,)).lastrowid
-        crushing = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Дробящее', ?)",
-                                  (cold_id,)).lastrowid
-        piercing = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Колющее', ?)",
-                                  (cold_id,)).lastrowid
+        cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Короткоклинковое', ?)", (cold_id,))
+        cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Длинноклинковое', ?)", (cold_id,))
+        cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Древковое', ?)", (cold_id,))
+        cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Рубящее', ?)", (cold_id,))
+        cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Дробящее', ?)", (cold_id,))
+        cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Колющее', ?)", (cold_id,))
 
         fire_id = cursor.execute(
             "INSERT INTO weapon_classes (name, parent_id) VALUES ('Огнестрельное оружие', NULL)").lastrowid
         short_barrel = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Короткоствольное', ?)",
                                       (fire_id,)).lastrowid
-        pistols = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Пистолеты', ?)",
-                                 (short_barrel,)).lastrowid
-        revolvers = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Револьверы', ?)",
-                                   (short_barrel,)).lastrowid
-        derringers = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Дерринджеры', ?)",
-                                    (short_barrel,)).lastrowid
-        smgs = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Пистолеты-пулемёты', ?)",
-                              (short_barrel,)).lastrowid
+        cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Пистолеты', ?)", (short_barrel,))
+        cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Револьверы', ?)", (short_barrel,))
+        cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Дерринджеры', ?)", (short_barrel,))
+        cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Пистолеты-пулемёты', ?)", (short_barrel,))
 
         rifled = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Нарезное', ?)",
                                 (fire_id,)).lastrowid
-        rifles = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Винтовки', ?)",
-                                (rifled,)).lastrowid
-        assault = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Автоматы', ?)",
-                                 (rifled,)).lastrowid
-        machine_guns = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Пулемёты', ?)",
-                                      (rifled,)).lastrowid
-        sniper = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Снайперские винтовки', ?)",
-                                (rifled,)).lastrowid
-        semi_auto = cursor.execute(
-            "INSERT INTO weapon_classes (name, parent_id) VALUES ('Полуавтоматические винтовки', ?)",
-            (rifled,)).lastrowid
+        cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Винтовки', ?)", (rifled,))
+        cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Автоматы', ?)", (rifled,))
+        cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Пулемёты', ?)", (rifled,))
+        cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Снайперские винтовки', ?)", (rifled,))
+        cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Полуавтоматические винтовки', ?)",
+                       (rifled,))
 
         smoothbore = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Гладкоствольное', ?)",
                                     (fire_id,)).lastrowid
-        shotguns = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Ружья', ?)",
-                                  (smoothbore,)).lastrowid
-        shotguns2 = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Дробовики', ?)",
-                                   (smoothbore,)).lastrowid
+        cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Ружья', ?)", (smoothbore,))
+        cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Дробовики', ?)", (smoothbore,))
 
         explosive = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Взрывное', ?)",
                                    (fire_id,)).lastrowid
-        grenades = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Гранаты', ?)",
-                                  (explosive,)).lastrowid
-        launchers = cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Гранатомёты', ?)",
-                                   (explosive,)).lastrowid
+        cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Гранаты', ?)", (explosive,))
+        cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES ('Гранатомёты', ?)", (explosive,))
 
     conn.commit()
     conn.close()
@@ -122,6 +112,7 @@ class LoginDialog(QDialog):
         super().__init__()
         self.setWindowTitle("Авторизация / Регистрация")
         self.setFixedSize(400, 250)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.user = None
 
         layout = QVBoxLayout()
@@ -215,15 +206,40 @@ class LoginDialog(QDialog):
 
 
 class ArticleViewDialog(QDialog):
-    def __init__(self, article_data):
+    def __init__(self, article_data, user_id=None, favorites_callback=None):
         super().__init__()
+        self.article_data = article_data
+        self.user_id = user_id
+        self.favorites_callback = favorites_callback
         self.setWindowTitle(article_data[1])
         self.setMinimumSize(600, 500)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         layout = QVBoxLayout()
 
+        # Заголовок с кнопкой избранного
+        title_layout = QHBoxLayout()
         title_label = QLabel(f"<h1>{article_data[1]}</h1>")
         title_label.setWordWrap(True)
-        layout.addWidget(title_label)
+        title_layout.addWidget(title_label)
+
+        # Кнопка избранного (звезда) только для обычных пользователей
+        if user_id:
+            self.fav_btn = QPushButton("☆")
+            self.fav_btn.setFixedSize(40, 40)
+            self.fav_btn.setStyleSheet("""
+                QPushButton { 
+                    font-size: 24px; 
+                    background-color: transparent; 
+                    border: 2px solid #D4C5A9;
+                    border-radius: 20px;
+                }
+                QPushButton:hover { background-color: #FFF3CD; }
+            """)
+            self.check_favorite_status()
+            self.fav_btn.clicked.connect(self.toggle_favorite)
+            title_layout.addWidget(self.fav_btn)
+        title_layout.addStretch()
+        layout.addLayout(title_layout)
 
         if article_data[3]:
             pixmap = QPixmap(article_data[3])
@@ -247,8 +263,178 @@ class ArticleViewDialog(QDialog):
         layout.addWidget(close_btn)
         self.setLayout(layout)
 
+    def check_favorite_status(self):
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM favorites WHERE user_id=? AND article_id=?",
+                       (self.user_id, self.article_data[0]))
+        is_favorite = cursor.fetchone() is not None
+        conn.close()
+        self.fav_btn.setText("★" if is_favorite else "☆")
+        self.fav_btn.setStyleSheet("""
+            QPushButton { 
+                font-size: 24px; 
+                background-color: """ + ("#FFD700" if is_favorite else "transparent") + """;
+                border: 2px solid #D4C5A9;
+                border-radius: 20px;
+            }
+            QPushButton:hover { background-color: #FFF3CD; }
+        """)
 
-from PyQt5.QtWidgets import QInputDialog
+    def toggle_favorite(self):
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        if self.fav_btn.text() == "☆":
+            cursor.execute("INSERT INTO favorites (user_id, article_id) VALUES (?, ?)",
+                           (self.user_id, self.article_data[0]))
+            conn.commit()
+            QMessageBox.information(self, "Успех", "Статья добавлена в избранное")
+        else:
+            cursor.execute("DELETE FROM favorites WHERE user_id=? AND article_id=?",
+                           (self.user_id, self.article_data[0]))
+            conn.commit()
+            QMessageBox.information(self, "Успех", "Статья удалена из избранного")
+        conn.close()
+        self.check_favorite_status()
+        if self.favorites_callback:
+            self.favorites_callback()
+
+
+# Базовый класс для панели просмотра статей (общий для всех ролей)
+class ArticlesViewPanel(QWidget):
+    def __init__(self, user=None):
+        super().__init__()
+        self.user = user
+        layout = QHBoxLayout()
+
+        splitter = QSplitter(Qt.Horizontal)
+
+        # Левая панель с классами
+        left_widget = QWidget()
+        left_layout = QVBoxLayout()
+
+        self.tree = QTreeWidget()
+        self.tree.setHeaderLabel("Классы оружия")
+        self.build_tree()
+        self.tree.itemClicked.connect(self.on_class_selected)
+        left_layout.addWidget(self.tree)
+
+        # Кнопка избранного для пользователей
+        if user and user.get("role") == "user":
+            self.fav_view_btn = QPushButton("★ Избранное")
+            self.fav_view_btn.clicked.connect(self.show_favorites)
+            left_layout.addWidget(self.fav_view_btn)
+
+        left_widget.setLayout(left_layout)
+
+        right_widget = QWidget()
+        right_layout = QVBoxLayout()
+
+        self.articles_list = QListWidget()
+        self.articles_list.itemDoubleClicked.connect(self.on_article_double_clicked)
+
+        self.search_edit = QLineEdit()
+        self.search_edit.setPlaceholderText("Поиск статей...")
+        self.search_edit.textChanged.connect(self.filter_articles)
+
+        right_layout.addWidget(self.search_edit)
+        right_layout.addWidget(self.articles_list)
+        right_widget.setLayout(right_layout)
+
+        splitter.addWidget(left_widget)
+        splitter.addWidget(right_widget)
+        splitter.setSizes([300, 500])
+
+        layout.addWidget(splitter)
+        self.setLayout(layout)
+        self.current_class_id = None
+        self.all_articles = []
+        self.showing_favorites = False
+
+    def build_tree(self):
+        self.tree.clear()
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name, parent_id FROM weapon_classes")
+        classes = cursor.fetchall()
+        conn.close()
+
+        def add_items(parent_item, parent_id):
+            for cls_id, name, p_id in classes:
+                if p_id == parent_id:
+                    item = QTreeWidgetItem(parent_item if parent_item else self.tree, [name])
+                    item.setData(0, Qt.UserRole, cls_id)
+                    add_items(item, cls_id)
+
+        add_items(None, None)
+        self.tree.expandAll()
+
+    def on_class_selected(self, item, column):
+        if self.showing_favorites:
+            self.showing_favorites = False
+        class_id = item.data(0, Qt.UserRole)
+        self.current_class_id = class_id
+        self.load_articles(class_id)
+
+    def load_articles(self, class_id=None):
+        self.articles_list.clear()
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        if class_id:
+            cursor.execute('''SELECT DISTINCT a.id, a.title FROM articles a
+                              JOIN weapon_classes wc ON a.class_id = wc.id
+                              WHERE wc.id = ? OR wc.parent_id = ?''',
+                           (class_id, class_id))
+        else:
+            cursor.execute("SELECT id, title FROM articles")
+        self.all_articles = cursor.fetchall()
+        conn.close()
+        self.display_articles(self.all_articles)
+
+    def show_favorites(self):
+        self.showing_favorites = True
+        self.current_class_id = None
+        self.articles_list.clear()
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute('''SELECT a.id, a.title FROM articles a
+                          JOIN favorites f ON a.id = f.article_id
+                          WHERE f.user_id = ?''', (self.user["id"],))
+        favorites = cursor.fetchall()
+        conn.close()
+        self.all_articles = favorites
+        self.display_articles(favorites)
+        QMessageBox.information(self, "Избранное", f"Найдено {len(favorites)} статей в избранном")
+
+    def display_articles(self, articles):
+        self.articles_list.clear()
+        for art_id, title in articles:
+            item = QListWidgetItem(title)
+            item.setData(Qt.UserRole, art_id)
+            self.articles_list.addItem(item)
+
+    def filter_articles(self, text):
+        if not text:
+            self.display_articles(self.all_articles)
+            return
+        filtered = [(aid, title) for aid, title in self.all_articles if text.lower() in title.lower()]
+        self.display_articles(filtered)
+
+    def on_article_double_clicked(self, item):
+        article_id = item.data(Qt.UserRole)
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM articles WHERE id=?", (article_id,))
+        article = cursor.fetchone()
+        conn.close()
+        if article:
+            user_id = self.user["id"] if self.user and self.user.get("role") == "user" else None
+            dialog = ArticleViewDialog(article, user_id, self.refresh_favorites)
+            dialog.exec_()
+
+    def refresh_favorites(self):
+        if self.showing_favorites:
+            self.show_favorites()
 
 
 class AdminPanel(QWidget):
@@ -257,22 +443,44 @@ class AdminPanel(QWidget):
         self.user = user
         layout = QVBoxLayout()
 
+        # Создаем вкладки для админа
+        self.tab_widget = QTabWidget()
+
+        # Вкладка с просмотром статей
+        self.articles_view = ArticlesViewPanel(user)
+        self.tab_widget.addTab(self.articles_view, "Просмотр статей")
+
+        # Вкладка с админскими функциями
+        admin_widget = QWidget()
+        admin_layout = QVBoxLayout()
+
         tabs = QPushButton("Просмотр таблиц БД")
         tabs.clicked.connect(self.show_tables)
         add_editor_btn = QPushButton("Добавить редактора")
         add_editor_btn.clicked.connect(self.add_editor)
+        delete_user_btn = QPushButton("Удалить пользователя/редактора")
+        delete_user_btn.clicked.connect(self.delete_user)
         add_class_btn = QPushButton("Добавить класс оружия")
         add_class_btn.clicked.connect(self.add_weapon_class)
+        delete_class_btn = QPushButton("Удалить класс оружия")
+        delete_class_btn.clicked.connect(self.delete_weapon_class)
 
-        layout.addWidget(tabs)
-        layout.addWidget(add_editor_btn)
-        layout.addWidget(add_class_btn)
-        layout.addStretch()
+        admin_layout.addWidget(tabs)
+        admin_layout.addWidget(add_editor_btn)
+        admin_layout.addWidget(delete_user_btn)
+        admin_layout.addWidget(add_class_btn)
+        admin_layout.addWidget(delete_class_btn)
+        admin_layout.addStretch()
+        admin_widget.setLayout(admin_layout)
+        self.tab_widget.addTab(admin_widget, "Управление")
+
+        layout.addWidget(self.tab_widget)
         self.setLayout(layout)
 
     def add_editor(self):
         dialog = QDialog(self)
         dialog.setWindowTitle("Добавить редактора")
+        dialog.setWindowFlags(dialog.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         layout = QFormLayout()
 
         login_edit = QLineEdit()
@@ -314,14 +522,42 @@ class AdminPanel(QWidget):
         cancel_btn.clicked.connect(dialog.reject)
         dialog.exec_()
 
+    def delete_user(self):
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, login, role FROM users WHERE role IN ('user', 'editor')")
+        users = cursor.fetchall()
+        conn.close()
+
+        if not users:
+            QMessageBox.information(self, "Инфо", "Нет пользователей для удаления")
+            return
+
+        items = [f"{u[0]}: {u[1]} ({u[2]})" for u in users]
+        item, ok = QInputDialog.getItem(self, "Удалить пользователя", "Выберите пользователя:", items, 0, False)
+
+        if ok and item:
+            user_id = int(item.split(":")[0])
+            reply = QMessageBox.question(self, "Подтверждение",
+                                         "Удалить этого пользователя? Все его статьи также будут удалены.",
+                                         QMessageBox.Yes | QMessageBox.No)
+            if reply == QMessageBox.Yes:
+                conn = sqlite3.connect(DB_NAME)
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM users WHERE id=?", (user_id,))
+                conn.commit()
+                conn.close()
+                QMessageBox.information(self, "Успех", "Пользователь удален")
+
     def show_tables(self):
         dialog = QDialog(self)
         dialog.setWindowTitle("Таблицы базы данных")
         dialog.setMinimumSize(800, 600)
+        dialog.setWindowFlags(dialog.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         layout = QVBoxLayout()
 
         tabs_widget = QComboBox()
-        tabs_widget.addItems(["users", "weapon_classes", "articles"])
+        tabs_widget.addItems(["users", "weapon_classes", "articles", "favorites"])
         layout.addWidget(tabs_widget)
 
         table = QTableWidget()
@@ -351,25 +587,10 @@ class AdminPanel(QWidget):
         dialog.setLayout(layout)
         dialog.exec_()
 
-    def add_editor(self):
-        login, ok = QInputDialog.getText(self, "Добавить редактора", "Логин:")
-        if ok and login:
-            password, ok = QInputDialog.getText(self, "Добавить редактора", "Пароль:")
-            if ok and password:
-                conn = sqlite3.connect(DB_NAME)
-                cursor = conn.cursor()
-                try:
-                    cursor.execute("INSERT INTO users (login, password, role) VALUES (?,?,'editor')", (login, password))
-                    conn.commit()
-                    QMessageBox.information(self, "Успех", "Редактор добавлен")
-                except sqlite3.IntegrityError:
-                    QMessageBox.warning(self, "Ошибка", "Логин уже занят")
-                finally:
-                    conn.close()
-
     def add_weapon_class(self):
         dialog = QDialog(self)
         dialog.setWindowTitle("Добавить класс оружия")
+        dialog.setWindowFlags(dialog.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         layout = QFormLayout()
         name_edit = QLineEdit()
         parent_combo = QComboBox()
@@ -406,6 +627,7 @@ class AdminPanel(QWidget):
                 cursor.execute("INSERT INTO weapon_classes (name, parent_id) VALUES (?,?)", (name, parent_id))
                 conn.commit()
                 QMessageBox.information(dialog, "Успех", "Класс добавлен")
+                self.articles_view.build_tree()  # Обновляем дерево классов
                 dialog.accept()
             except sqlite3.IntegrityError:
                 QMessageBox.warning(dialog, "Ошибка", "Такой класс уже существует")
@@ -416,12 +638,52 @@ class AdminPanel(QWidget):
         cancel_btn.clicked.connect(dialog.reject)
         dialog.exec_()
 
+    def delete_weapon_class(self):
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name FROM weapon_classes")
+        classes = cursor.fetchall()
+        conn.close()
+
+        if not classes:
+            QMessageBox.information(self, "Инфо", "Нет классов для удаления")
+            return
+
+        items = [f"{c[0]}: {c[1]}" for c in classes]
+        item, ok = QInputDialog.getItem(self, "Удалить класс", "Выберите класс для удаления:", items, 0, False)
+
+        if ok and item:
+            class_id = int(item.split(":")[0])
+            reply = QMessageBox.question(self, "Подтверждение",
+                                         "Удалить этот класс? Все вложенные классы и статьи также будут удалены.",
+                                         QMessageBox.Yes | QMessageBox.No)
+            if reply == QMessageBox.Yes:
+                conn = sqlite3.connect(DB_NAME)
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM weapon_classes WHERE id=?", (class_id,))
+                conn.commit()
+                conn.close()
+                QMessageBox.information(self, "Успех", "Класс удален")
+                self.articles_view.build_tree()  # Обновляем дерево классов
+                self.articles_view.load_articles()  # Обновляем список статей
+
 
 class EditorPanel(QWidget):
     def __init__(self, user):
         super().__init__()
         self.user = user
         layout = QVBoxLayout()
+
+        # Создаем вкладки для редактора
+        self.tab_widget = QTabWidget()
+
+        # Вкладка с просмотром статей
+        self.articles_view = ArticlesViewPanel(user)
+        self.tab_widget.addTab(self.articles_view, "Просмотр статей")
+
+        # Вкладка с редактированием
+        edit_widget = QWidget()
+        edit_layout = QVBoxLayout()
 
         add_btn = QPushButton("Добавить статью")
         add_btn.clicked.connect(self.add_article)
@@ -430,16 +692,21 @@ class EditorPanel(QWidget):
         delete_btn = QPushButton("Удалить статью")
         delete_btn.clicked.connect(self.delete_article)
 
-        layout.addWidget(add_btn)
-        layout.addWidget(edit_btn)
-        layout.addWidget(delete_btn)
-        layout.addStretch()
+        edit_layout.addWidget(add_btn)
+        edit_layout.addWidget(edit_btn)
+        edit_layout.addWidget(delete_btn)
+        edit_layout.addStretch()
+        edit_widget.setLayout(edit_layout)
+        self.tab_widget.addTab(edit_widget, "Редактирование")
+
+        layout.addWidget(self.tab_widget)
         self.setLayout(layout)
 
     def add_article(self):
         dialog = QDialog(self)
         dialog.setWindowTitle("Добавить статью")
         dialog.setMinimumSize(500, 400)
+        dialog.setWindowFlags(dialog.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         layout = QFormLayout()
 
         title_edit = QLineEdit()
@@ -506,6 +773,7 @@ class EditorPanel(QWidget):
             conn.close()
             QMessageBox.information(dialog, "Успех", "Статья добавлена")
             dialog.accept()
+            self.articles_view.load_articles(self.articles_view.current_class_id)
 
         save_btn.clicked.connect(save_article)
         cancel_btn.clicked.connect(dialog.reject)
@@ -523,6 +791,7 @@ class EditorPanel(QWidget):
             dialog = QDialog(self)
             dialog.setWindowTitle("Редактировать статью")
             dialog.setMinimumSize(500, 400)
+            dialog.setWindowFlags(dialog.windowFlags() & ~Qt.WindowContextHelpButtonHint)
             layout = QFormLayout()
 
             conn = sqlite3.connect(DB_NAME)
@@ -595,6 +864,7 @@ class EditorPanel(QWidget):
                 conn.close()
                 QMessageBox.information(dialog, "Успех", "Статья обновлена")
                 dialog.accept()
+                self.articles_view.load_articles(self.articles_view.current_class_id)
 
             save_btn.clicked.connect(save_changes)
             cancel_btn.clicked.connect(dialog.reject)
@@ -618,6 +888,7 @@ class EditorPanel(QWidget):
                 conn.commit()
                 conn.close()
                 QMessageBox.information(self, "Успех", "Статья удалена")
+                self.articles_view.load_articles(self.articles_view.current_class_id)
 
     def get_articles_list(self):
         conn = sqlite3.connect(DB_NAME)
@@ -628,107 +899,9 @@ class EditorPanel(QWidget):
         return articles
 
 
-class UserPanel(QWidget):
+class UserPanel(ArticlesViewPanel):
     def __init__(self, user):
-        super().__init__()
-        self.user = user
-        layout = QHBoxLayout()
-
-        splitter = QSplitter(Qt.Horizontal)
-
-        self.tree = QTreeWidget()
-        self.tree.setHeaderLabel("Классы оружия")
-        self.build_tree()
-        self.tree.itemClicked.connect(self.on_class_selected)
-
-        right_widget = QWidget()
-        right_layout = QVBoxLayout()
-
-        self.articles_list = QListWidget()
-        self.articles_list.itemDoubleClicked.connect(self.on_article_double_clicked)
-
-        self.search_edit = QLineEdit()
-        self.search_edit.setPlaceholderText("Поиск статей...")
-        self.search_edit.textChanged.connect(self.filter_articles)
-
-        right_layout.addWidget(self.search_edit)
-        right_layout.addWidget(self.articles_list)
-        right_widget.setLayout(right_layout)
-
-        splitter.addWidget(self.tree)
-        splitter.addWidget(right_widget)
-        splitter.setSizes([300, 500])
-
-        layout.addWidget(splitter)
-        self.setLayout(layout)
-        self.current_class_id = None
-        self.all_articles = []
-
-    def build_tree(self):
-        self.tree.clear()
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, name, parent_id FROM weapon_classes")
-        classes = cursor.fetchall()
-        conn.close()
-
-        def add_items(parent_item, parent_id):
-            for cls_id, name, p_id in classes:
-                if p_id == parent_id:
-                    item = QTreeWidgetItem(parent_item if parent_item else self.tree, [name])
-                    item.setData(0, Qt.UserRole, cls_id)
-                    add_items(item, cls_id)
-
-        add_items(None, None)
-        self.tree.expandAll()
-
-    def on_class_selected(self, item, column):
-        class_id = item.data(0, Qt.UserRole)
-        self.current_class_id = class_id
-        self.load_articles(class_id)
-
-    def load_articles(self, class_id=None):
-        self.articles_list.clear()
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        if class_id:
-            cursor.execute('''SELECT a.id, a.title FROM articles a
-                              JOIN weapon_classes wc ON a.class_id = wc.id
-                              WHERE wc.id = ? OR wc.parent_id = ?
-                              OR wc.parent_id IN (SELECT id FROM weapon_classes WHERE parent_id = ?)
-                              OR wc.parent_id IN (SELECT id FROM weapon_classes WHERE parent_id IN
-                              (SELECT id FROM weapon_classes WHERE parent_id = ?))''',
-                           (class_id, class_id, class_id, class_id))
-        else:
-            cursor.execute("SELECT id, title FROM articles")
-        self.all_articles = cursor.fetchall()
-        conn.close()
-        self.display_articles(self.all_articles)
-
-    def display_articles(self, articles):
-        self.articles_list.clear()
-        for art_id, title in articles:
-            item = QListWidgetItem(title)
-            item.setData(Qt.UserRole, art_id)
-            self.articles_list.addItem(item)
-
-    def filter_articles(self, text):
-        if not text:
-            self.display_articles(self.all_articles)
-            return
-        filtered = [(aid, title) for aid, title in self.all_articles if text.lower() in title.lower()]
-        self.display_articles(filtered)
-
-    def on_article_double_clicked(self, item):
-        article_id = item.data(Qt.UserRole)
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM articles WHERE id=?", (article_id,))
-        article = cursor.fetchone()
-        conn.close()
-        if article:
-            dialog = ArticleViewDialog(article)
-            dialog.exec_()
+        super().__init__(user)
 
 
 class MainWindow(QMainWindow):
@@ -747,14 +920,19 @@ class MainWindow(QMainWindow):
             QPushButton:pressed { background-color: #B0A080; }
             QLineEdit, QTextEdit, QComboBox { background-color: #FFFFFF; border: 1px solid #C4B599; 
                                               padding: 4px; border-radius: 3px; }
-            QTreeWidget { background-color: #FFFFFF; border: 1px solid #C4B599; }
-            QListWidget { background-color: #FFFFFF; border: 1px solid #C4B599; }
-            QTableWidget { background-color: #FFFFFF; border: 1px solid #C4B599; 
-                           gridline-color: #D4C5A9; }
+            QTreeWidget, QListWidget, QTableWidget { 
+                background-color: #FFFFFF; border: 1px solid #C4B599; 
+                outline: none;
+            }
+            QTreeWidget::item:selected, QListWidget::item:selected {
+                background-color: #D4C5A9;
+            }
             QHeaderView::section { background-color: #D4C5A9; padding: 4px; border: 1px solid #B8A88A; }
             QLabel { color: #2C2C2C; }
-            QGroupBox { border: 1px solid #C4B599; border-radius: 4px; margin-top: 8px; padding-top: 16px; }
-            QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; }
+            QTabWidget::pane { border: 1px solid #C4B599; background-color: #FAFAF5; }
+            QTabBar::tab { background-color: #E8E0D0; padding: 6px 12px; margin-right: 2px; }
+            QTabBar::tab:selected { background-color: #D4C5A9; }
+            QTabBar::tab:hover { background-color: #C4B599; }
         """)
 
         self.login_dialog = LoginDialog()
@@ -776,36 +954,25 @@ class MainWindow(QMainWindow):
         header.addWidget(logout_btn)
         main_layout.addLayout(header)
 
-        self.stacked = QStackedWidget()
-
         if self.user["role"] == "admin":
-            self.stacked.addWidget(AdminPanel(self.user))
+            self.panel = AdminPanel(self.user)
         elif self.user["role"] == "editor":
-            self.stacked.addWidget(EditorPanel(self.user))
+            self.panel = EditorPanel(self.user)
         else:
-            self.stacked.addWidget(UserPanel(self.user))
+            self.panel = UserPanel(self.user)
 
-        main_layout.addWidget(self.stacked)
+        main_layout.addWidget(self.panel)
         central.setLayout(main_layout)
 
     def logout(self):
         self.close()
-        new_window = MainWindow()
-        new_window.show()
-        self.deleteLater()
-        global app
-        app.activeWindow = new_window
-
-
-class App(QApplication):
-    def __init__(self, argv):
-        super().__init__(argv)
-        self.activeWindow = None
+        self.new_window = MainWindow()
+        self.new_window.show()
 
 
 if __name__ == "__main__":
     init_db()
-    app = App(sys.argv)
+    app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
