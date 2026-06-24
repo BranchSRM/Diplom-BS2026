@@ -415,9 +415,39 @@ class ArticlesViewPanel(QWidget):
 
     def filter_articles(self, text):
         if not text:
-            self.display_articles(self.all_articles)
+            # Если поиск пустой, показываем все статьи текущего контекста
+            if self.showing_favorites:
+                self.show_favorites()
+            else:
+                self.load_articles(self.current_class_id)
             return
-        filtered = [(aid, title) for aid, title in self.all_articles if text.lower() in title.lower()]
+
+        # Загружаем все статьи текущего контекста (класс или избранное)
+        if self.showing_favorites:
+            conn = sqlite3.connect(DB_NAME)
+            cursor = conn.cursor()
+            cursor.execute('''SELECT a.id, a.title FROM articles a
+                              JOIN favorites f ON a.id = f.article_id
+                              WHERE f.user_id = ?''', (self.user["id"],))
+            all_articles = cursor.fetchall()
+            conn.close()
+        else:
+            conn = sqlite3.connect(DB_NAME)
+            cursor = conn.cursor()
+            if self.current_class_id:
+                cursor.execute('''SELECT DISTINCT a.id, a.title FROM articles a
+                                  JOIN weapon_classes wc ON a.class_id = wc.id
+                                  WHERE wc.id = ? OR wc.parent_id = ?''',
+                               (self.current_class_id, self.current_class_id))
+            else:
+                cursor.execute("SELECT id, title FROM articles")
+            all_articles = cursor.fetchall()
+            conn.close()
+
+        # Фильтруем с учетом регистронезависимости
+        search_text = text.lower()
+        filtered = [(aid, title) for aid, title in all_articles if search_text in title.lower()]
+        self.all_articles = filtered
         self.display_articles(filtered)
 
     def on_article_double_clicked(self, item):
